@@ -127,6 +127,7 @@ class GPT2Attention(nn.Module):
     def __init__(self, config, is_cross_attention=False):
         super().__init__()
 
+        '''
         max_positions = config.max_position_embeddings
         self.register_buffer(
             "bias",
@@ -135,7 +136,8 @@ class GPT2Attention(nn.Module):
             ),
         )
         self.register_buffer("masked_bias", torch.tensor(-1e4))
-
+        '''
+        
         self.embed_dim = config.hidden_size
         self.num_heads = config.num_attention_heads
         self.head_dim = self.embed_dim // self.num_heads
@@ -578,7 +580,7 @@ class GPT2Model(GPT2PreTrainedModel):
         self.embed_dim = config.hidden_size
 
         self.wte = nn.Embedding(config.vocab_size, self.embed_dim)
-        self.wpe = nn.Embedding(config.max_position_embeddings, self.embed_dim)
+#         self.wpe = nn.Embedding(config.max_position_embeddings, self.embed_dim)
 
         self.drop = nn.Dropout(config.embd_pdrop)
         self.h = nn.ModuleList([GPT2Block(config) for _ in range(config.num_hidden_layers)])
@@ -601,7 +603,7 @@ class GPT2Model(GPT2PreTrainedModel):
         self.first_device = "cpu" if "cpu" in self.device_map.keys() else "cuda:" + str(min(self.device_map.keys()))
         self.last_device = "cuda:" + str(max(self.device_map.keys()))
         self.wte = self.wte.to(self.first_device)
-        self.wpe = self.wpe.to(self.first_device)
+#         self.wpe = self.wpe.to(self.first_device)
         # Load onto devices
         for k, v in self.device_map.items():
             for block in v:
@@ -617,7 +619,7 @@ class GPT2Model(GPT2PreTrainedModel):
         self.first_device = "cpu"
         self.last_device = "cpu"
         self.wte = self.wte.to("cpu")
-        self.wpe = self.wpe.to("cpu")
+#         self.wpe = self.wpe.to("cpu")
         for index in range(len(self.h)):
             self.h[index] = self.h[index].to("cpu")
         self.ln_f = self.ln_f.to("cpu")
@@ -682,17 +684,23 @@ class GPT2Model(GPT2PreTrainedModel):
 
         if token_type_ids is not None:
             token_type_ids = token_type_ids.view(-1, input_shape[-1])
+         
+        '''
         if position_ids is not None:
             position_ids = position_ids.view(-1, input_shape[-1])
+        '''
 
         if past_key_values is None:
             past_length = 0
             past_key_values = tuple([None] * len(self.h))
         else:
             past_length = past_key_values[0][0].size(-2)
+         
+        '''
         if position_ids is None:
             position_ids = torch.arange(past_length, input_shape[-1] + past_length, dtype=torch.long, device=device)
             position_ids = position_ids.unsqueeze(0).view(-1, input_shape[-1])
+        '''
 
         # GPT2Attention mask.
         if attention_mask is not None:
@@ -733,8 +741,10 @@ class GPT2Model(GPT2PreTrainedModel):
 
         if inputs_embeds is None:
             inputs_embeds = self.wte(input_ids)
-        position_embeds = self.wpe(position_ids)
-        hidden_states = inputs_embeds + position_embeds
+#         position_embeds = self.wpe(position_ids)
+
+#         hidden_states = inputs_embeds + position_embeds
+        hidden_states = inputs_embeds
 
         if token_type_ids is not None:
             token_type_embeds = self.wte(token_type_ids)
@@ -895,8 +905,8 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
                 token_type_ids = token_type_ids[:, -1].unsqueeze(-1)
 
         attention_mask = kwargs.get("attention_mask", None)
-        position_ids = kwargs.get("position_ids", None)
-
+#         position_ids = kwargs.get("position_ids", None)
+        '''
         if attention_mask is not None and position_ids is None:
             # create position_ids on the fly for batch generation
             position_ids = attention_mask.long().cumsum(-1) - 1
@@ -905,6 +915,7 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
                 position_ids = position_ids[:, -1].unsqueeze(-1)
         else:
             position_ids = None
+        '''
         return {
             "input_ids": input_ids,
             "past_key_values": past,
@@ -1067,8 +1078,9 @@ class GPT2DoubleHeadsModel(GPT2PreTrainedModel):
                 token_type_ids = token_type_ids[:, -1].unsqueeze(-1)
 
         attention_mask = kwargs.get("attention_mask", None)
-        position_ids = kwargs.get("position_ids", None)
+#         position_ids = kwargs.get("position_ids", None)
 
+        '''
         if attention_mask is not None and position_ids is None:
             # create position_ids on the fly for batch generation
             position_ids = attention_mask.long().cumsum(-1) - 1
@@ -1077,7 +1089,8 @@ class GPT2DoubleHeadsModel(GPT2PreTrainedModel):
                 position_ids = position_ids[:, -1].unsqueeze(-1)
         else:
             position_ids = None
-
+        '''
+    
         return {
             "input_ids": input_ids,
             "past_key_values": past,
